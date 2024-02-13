@@ -11,7 +11,7 @@ import datetime
 # Create tkinter window
 window = tk.Tk()
 window.title("Employee Attendance Management System")
-window.geometry("800x600")
+window.geometry("1200x600")
 
 # Apply ttkbootstrap style
 style = ttkb.Style(theme="cosmo")
@@ -54,7 +54,7 @@ def search_employee():
 
         # Filter data based on Matricule
         for item_id in employees_treeview.get_children():
-            matricule = employees_treeview.item(item_id)['values'][1]
+            matricule = employees_treeview.item(item_id)['values'][2]
 
             # Check if the 'Matricule' matches the search query
             if int(matricule) == int(search_query):
@@ -74,7 +74,7 @@ def search_employee():
 
                 confirmer = ttkb.Button(search_frame, text="Confirmer", command=lambda:affecter_jour(matricule, item_id), bootstyle='SUCCESS')
                 confirmer.grid(row=3, column=2)
-                last_column_value = employees_treeview.item(item_id)['values'][3]
+                last_column_value = employees_treeview.item(item_id)['values'][10]
 
                 if last_column_value == 'Pas Encore!':
                     default_text.set('Pas Encore!')
@@ -98,10 +98,36 @@ def search_employee():
 
 # Function to display employees in Treeview
 def display_employees(df):
+    # Open the Excel file
+    workbook = openpyxl.load_workbook("employees.xlsx")
+    # Choose the first sheet in the workbook
+    sheet = workbook.active
+    
+    # Create a list to store the column headers
+    columns = []
+    
+    # Loop through the cells in the first row
+    for cell in sheet[1]:
+        # Add the cell value to the columns list
+        columns.append(cell.value)
+    
+    # Add the "Aujordhui" column header
+    columns.append("Aujordhui")
+    print(columns)
+    employees_treeview['columns'] =columns
+    employees_treeview.heading("#0", text="Index", anchor=tk.W)
+    employees_treeview.column("#0", width=50,minwidth=50, anchor=tk.W)
 
+
+    for column in columns:
+        employees_treeview.heading(column, text=column, anchor=tk.W)
+        employees_treeview.column(column, width=100, anchor=tk.W)
+    # employees_treeview.insert('', 'end', text=0, values=employees_treeview.item(item_id)['values'])
+        
     # Display data in Treeview
     for index, row in df.iterrows():
-        excel_file_path = f'.\\PointageAnnuel\\{row.tolist()[1]}-{today.year}.xlsx'
+
+        excel_file_path = f'.\\PointageAnnuel\\{row.tolist()[2]}-{today.year}.xlsx'
         # Open Excel file and access sheet
         workbook = openpyxl.load_workbook(excel_file_path)
         # Choose the sheet you want to read (default is sheet 1)
@@ -112,6 +138,8 @@ def display_employees(df):
 
         # Access the cell for today's appointment
         cell = sheet[str(curr_day_col)+str(curr_day_row)]
+
+        # Insert data into the employees_treeview
         if not cell.value:
             employees_treeview.insert("", "end", iid=index, text=index+1 , values= row.tolist()+['Pas Encore!'])
         else:
@@ -148,7 +176,7 @@ def affecter_jour(matricule, item_id):
         workbook.save(excel_file_path)
 
         # Update the value in the first Treeview (employees_treeview)
-        employees_treeview.item(item_id, values=(employees_treeview.item(item_id)['values'][:3] + [selected_value]))
+        employees_treeview.item(item_id, values=(employees_treeview.item(item_id)['values'][:10] + [selected_value]))
 
         # Update the value in the second Treeview (treeview_search)
         existing_values = treeview_search.item(treeview_search.get_children()[0])['values']
@@ -200,18 +228,20 @@ result_label.grid(row=1, columnspan=3, padx=5, pady=5)
 
 
 # Create Treeview to display employees
-employees_treeview = ttk.Treeview(window, columns=["Name", "Matricule", "Department", "Aujordhui"])
-employees_treeview.heading("#0", text="Index", anchor=tk.W)
-employees_treeview.heading("Name", text="Name", anchor=tk.W)
-employees_treeview.heading("Matricule", text="Matricule", anchor=tk.CENTER)
-employees_treeview.heading("Department", text="Department", anchor=tk.W)
-employees_treeview.heading("Aujordhui", text="Aujordhui", anchor=tk.W)
-# Adjust column widths and alignments
-employees_treeview.column("#0", width=50,minwidth=50, anchor=tk.W)
-employees_treeview.column("Name", width=150, anchor=tk.W)
-employees_treeview.column("Matricule", width=100, anchor=tk.CENTER)
-employees_treeview.column("Department", width=200, anchor=tk.W)
-employees_treeview.column("Aujordhui", width=200, anchor=tk.W)
+employees_treeview = ttk.Treeview(window)
+
+# employees_treeview.heading("#0", text="Index", anchor=tk.W)
+# employees_treeview.heading("Nom", text="Nom", anchor=tk.W)
+# employees_treeview.heading("Matricule", text="Matricule", anchor=tk.CENTER)
+# employees_treeview.heading("Department", text="Department", anchor=tk.W)
+# employees_treeview.heading("Aujordhui", text="Aujordhui", anchor=tk.W)
+# # Adjust column widths and alignments
+# employees_treeview.column("#0", width=50,minwidth=50, anchor=tk.W)
+# employees_treeview.column("Nom", width=150, anchor=tk.W)
+# employees_treeview.column("Matricule", width=100, anchor=tk.CENTER)
+# employees_treeview.column("Department", width=200, anchor=tk.W)
+# employees_treeview.column("Aujordhui", width=200, anchor=tk.W)
+
 # Set up Treeview style
 style = ttk.Style()
 # style.configure("Treeview", anchor=tk.W, font=("Arial", 10, "bold"))
