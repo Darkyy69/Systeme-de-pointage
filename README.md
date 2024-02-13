@@ -10,3 +10,7 @@ and run in the terminal:<br>
 ```cmd
 pip install -m requirements.txt
 ```
+Finally run the `main.py` file:<br>
+```cmd
+py main.py
+```
