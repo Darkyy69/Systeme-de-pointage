@@ -2,7 +2,7 @@
 Interface pour un  Systeme de pointage pour PETROMAG SPA
 
 # How to SETUP:
-Simply clone the repository with:\n
-```git clone https://github.com/Darkyy69/Systeme-de-pointage.git```
-and run in the terminal:\n
-```pip install -m requirements.txt```
+Simply clone the repository with:<br>
+```cmd git clone https://github.com/Darkyy69/Systeme-de-pointage.git```
+and run in the terminal:<br>
+```cmd pip install -m requirements.txt```
