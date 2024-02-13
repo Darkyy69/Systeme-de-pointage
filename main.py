@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import messagebox
 from tkinter import ttk
 import ttkbootstrap as ttkb
 from ttkbootstrap import *
@@ -20,7 +21,7 @@ treeview_search = None
 combobox = None
 confirmer = None
 annuler = None
-
+default_text = tk.StringVar(value='')
 
 codifications =  ['C', '1', '7', '6', '8', '9', 'A', 'R', 'T', 'I', '2', 'Cr', 'M']
 today = datetime.date.today()
@@ -41,44 +42,53 @@ def search_employee():
     global combobox
     global confirmer
     global annuler
+    global default_text
+
     # Get the Matricule (ID) entered by the user
-    matricule = matricule_entry.get()
-    if matricule:
+    search_query = matricule_entry.get()
+    employees_treeview.selection_remove(employees_treeview.selection())
 
-        result_label.config(text=f"Searching for employee with Matricule {matricule}")
+    if search_query:
+
+        result_label.config(text=f"Searching for employee with Matricule {search_query}")
+
         # Filter data based on Matricule
-        filtered_df = df[df['Matricule'] == int(matricule)]
-        if not filtered_df.empty:
+        for item_id in employees_treeview.get_children():
+            matricule = employees_treeview.item(item_id)['values'][1]
 
-            treeview_search = ttk.Treeview(search_frame, columns=list(filtered_df.columns)+['Aujordhui'], height=2)
-            treeview_search.grid(row=2, column=0, columnspan=len(filtered_df.columns), sticky="nsew")
+            # Check if the 'Matricule' matches the search query
+            if int(matricule) == int(search_query):
+                # Select the row in the Treeview
+                employees_treeview.selection_add(item_id)
+                # Scroll to the selected row
+                employees_treeview.see(item_id)
+                headings = employees_treeview['columns']
+                treeview_search = ttk.Treeview(search_frame, columns=headings, height=2)
+                treeview_search.grid(row=2, column=0, columnspan=len(headings), sticky="nsew")
+                treeview_search.column("#0",width=0,minwidth=0)
+                for column in headings:
+                    treeview_search.heading(column, text=column, anchor=tk.W)
+                    treeview_search.column(column, width=100, anchor=tk.W)
+                treeview_search.insert('', 'end', text=0, values=employees_treeview.item(item_id)['values'])
+                result_label.config(text='Trouvé')
 
-            treeview_search.column("#0",width=0,minwidth=0)
-            # Insert columns
-            for column in filtered_df.columns:
-                treeview_search.heading(column, text=column, anchor=tk.W)
-                treeview_search.heading('Aujordhui', text='Aujordhui', anchor=tk.W)
-                treeview_search.column(column, width=100, anchor=tk.W)
-            # Insert data
-            treeview_search.insert('', 'end', text=0, values=tuple(filtered_df.values[0]))
+                confirmer = ttkb.Button(search_frame, text="Confirmer", command=lambda:affecter_jour(matricule, item_id), bootstyle='SUCCESS')
+                confirmer.grid(row=3, column=2)
+                last_column_value = employees_treeview.item(item_id)['values'][3]
 
-            result_label.config(text='Trouvé')
+                if last_column_value == 'Pas Encore!':
+                    default_text.set('Pas Encore!')
+                    combobox = ttk.Combobox(search_frame, values=codifications, textvariable=default_text, state='readonly')
+                    combobox.grid(row=3, column=0)
 
-            combobox = ttk.Combobox(search_frame, values=codifications, textvariable='smt', state='readonly')
-            combobox.grid(row=3, column=0)    
-            confirmer = ttkb.Button(search_frame, text="Confirmer", command=affecter_jour, bootstyle='SUCCESS')
-            confirmer.grid(row=3, column=2, )
-            # Check if empty and update user status
-            if not cell.value:
-                # add_value_to_last_column(treeview_search,'Pas encore!')
-                pass
 
-            else:
-                # add_value_to_last_column(treeview_search,'Fait!')
-                pass
-                        
-            return  
-        
+                else:
+                    default_text.set(last_column_value)
+                    combobox = ttk.Combobox(search_frame, values=codifications, textvariable=default_text, state='readonly')
+                    combobox.grid(row=3, column=0) 
+
+
+                return  # Stop searching after finding the first match
         result_label.config(text='Ce matricute néxiste pas!')
         return
 
@@ -89,13 +99,9 @@ def search_employee():
 # Function to display employees in Treeview
 def display_employees(df):
 
-    # Clear existing items in Treeview
-    # for item in employees_treeview.get_children():
-    #     employees_treeview.delete(item)
     # Display data in Treeview
     for index, row in df.iterrows():
         excel_file_path = f'.\\PointageAnnuel\\{row.tolist()[1]}-{today.year}.xlsx'
-        print(excel_file_path)
         # Open Excel file and access sheet
         workbook = openpyxl.load_workbook(excel_file_path)
         # Choose the sheet you want to read (default is sheet 1)
@@ -109,7 +115,7 @@ def display_employees(df):
         if not cell.value:
             employees_treeview.insert("", "end", iid=index, text=index+1 , values= row.tolist()+['Pas Encore!'])
         else:
-            employees_treeview.insert("", "end", iid=index, text=index+1 , values= row.tolist()+['Fait!'])
+            employees_treeview.insert("", "end", iid=index, text=index+1 , values= row.tolist()+[cell.value])
 
 
 
@@ -118,12 +124,43 @@ def reset_filter():
     treeview_search.grid_forget()
     combobox.grid_forget()
     confirmer.grid_forget()
+    employees_treeview.selection_remove(employees_treeview.selection())
     # Clear the result label
     result_label.config(text='')
 
-def affecter_jour():
+def affecter_jour(matricule, item_id):
     selected_value = combobox.get()
     print("Selected value:", selected_value)
+    excel_file_path = f'.\\PointageAnnuel\\{matricule}-{today.year}.xlsx'
+    try: 
+        # Open Excel file and access sheet
+        workbook = openpyxl.load_workbook(excel_file_path)
+        # Choose the sheet you want to read (default is sheet 1)
+        sheet = workbook.active
+        
+        # Call row_col_dic function
+        curr_day_row, curr_day_col = row_col_dic(today_day, month_day)
+
+        # Access the cell for today's appointment
+        cell = sheet[str(curr_day_col)+str(curr_day_row)]
+        cell.value = selected_value
+        # Save the workbook to persist the changes
+        workbook.save(excel_file_path)
+
+        # Update the value in the first Treeview (employees_treeview)
+        employees_treeview.item(item_id, values=(employees_treeview.item(item_id)['values'][:3] + [selected_value]))
+
+        # Update the value in the second Treeview (treeview_search)
+        existing_values = treeview_search.item(treeview_search.get_children()[0])['values']
+        existing_values[-1] = selected_value
+        treeview_search.item(treeview_search.get_children()[0], values=existing_values)
+        print("Workbook saved successfully.")
+        messagebox.showinfo("Success", "Data saved successfully.")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        messagebox.showerror("Error", f"An error occurred: {e}\n\n PLEASE CLOSE THE EXCEL FILE!")
+
 
 
 # Validation function to allow only integer values
@@ -186,93 +223,6 @@ employees_treeview.pack(pady=20)
 
 df = pd.read_excel("employees.xlsx")
 display_employees(df)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# PARTIE FEUILLE DE POINTAGE
-
-# excel_file_path = "Template.xlsx"
-# # Define month and day information
-# # month_column_index = 0  # Adjust based on your Excel file
-# # current_day_row_index = 2  # Adjust based on current date
-
-# # Open Excel file and access sheet
-# workbook = openpyxl.load_workbook(excel_file_path)
-# # Choose the sheet you want to read (default is sheet 1)
-# sheet = workbook.active
-
- 
-# def row_col_dic(today_day, month_day):
-#     row_sheet_map = {i: i + 13 for i in range(1, 13)}
-#     col_sheet_map = {i: chr(i + ord('B') - 1) for i in range(1, 26)}
-#     dic2 = {i: 'A' + chr(i + 39) for i in range(26, 32)}
-#     col_sheet_map.update(dic2)
-#     return row_sheet_map[month_day], col_sheet_map[today_day]
-  
-# today = datetime.date.today()
-
-# # Extract day and month
-# today_day = today.day
-# month_day = today.month
-
-# # Call row_col_dic function
-# curr_day_row, curr_day_col = row_col_dic(today_day, month_day)
-
-# # Access the cell for today's appointment
-# cell = sheet[str(curr_day_col)+str(curr_day_row)]
-
-
-# def add_value_to_last_column(tree, value):
-#     # Get all the item identifiers in the treeview
-#     if tree:
-#         item_identifiers = tree.get_children()  
-#         # Iterate through each item identifier
-#         for item_id in item_identifiers:
-#             # Get the values of the item
-#             item_values = tree.item(item_id)['values']
-            
-#             # Update the last value of the item
-#             item_values.append(value) 
-            
-#             # Update the values of the item in the treeview
-#             tree.item(item_id, values=item_values)
-
-
-# # Check if empty and update user status
-# if not cell.value:
-#     print("User has not checked today's appointment")
-#     # employees_treeview.set('Aujordhui', 'Pas encore!' )
-#     add_value_to_last_column(employees_treeview,"Pas encore!")
-#     # add_value_to_last_column(treeview_search,'Pas encore!')
-
-# else:
-#     print("User has checked today's appointment")
-#     # employees_treeview.set('Aujordhui', 'Fait!' )
-#     add_value_to_last_column(employees_treeview,"Fait!")
-#     # add_value_to_last_column(treeview_search,'Fait!')
-
-
-
-
-
-
-
-
-
-
-
 
 
 
